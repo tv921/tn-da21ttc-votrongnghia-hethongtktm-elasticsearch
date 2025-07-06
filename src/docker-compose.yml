@@ -1,0 +1,47 @@
+version: "3.9"
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.3
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    mem_limit: 1g
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+
+  fastapi:
+    build:
+      context: ./backend/fastapi_app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - elasticsearch
+    mem_limit: 600m
+
+  express:
+    build:
+      context: ./backend
+    ports:
+      - "5000:5000"
+    depends_on:
+      - elasticsearch
+    env_file:
+      - .env
+    mem_limit: 500m
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    mem_limit: 400m
+
+volumes:
+  esdata:
