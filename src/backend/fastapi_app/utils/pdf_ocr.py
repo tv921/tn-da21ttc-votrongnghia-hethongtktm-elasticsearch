@@ -1,4 +1,5 @@
 
+
 import os
 import re
 import time
@@ -44,12 +45,25 @@ model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniL
 # -------------------------------------------
 def preprocess_image(img):
     img_np = np.array(img)
-    if len(img_np.shape) == 3 and img_np.shape[2] == 3:  # Nếu ảnh RGB (3 kênh)
+
+    # Resize ảnh để dễ nhận diện ký tự nhỏ (như số, dấu)
+    img_np = cv2.resize(img_np, None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR)
+
+    # Nếu ảnh màu (3 kênh) thì chuyển sang xám
+    if len(img_np.shape) == 3 and img_np.shape[2] == 3:
         gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
     else:
-        gray = img_np  # Đã grayscale rồi
-    _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
+        gray = img_np
+
+    # Làm nét ảnh để tăng độ rõ
+    sharpen = cv2.GaussianBlur(gray, (0, 0), 3)
+    sharpen = cv2.addWeighted(gray, 1.5, sharpen, -0.5, 0)
+
+    # Nhị phân hóa ảnh (Otsu auto threshold)
+    _, thresh = cv2.threshold(sharpen, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
     return thresh
+
 
 
 def extract_text_from_pdf_ocr(pdf_path):
