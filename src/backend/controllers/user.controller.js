@@ -76,3 +76,53 @@ exports.updateUser = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server', error: err.message });
   }
 };
+
+
+// Lấy thông tin profile của người dùng đang đăng nhập
+exports.getUserProfile = async (req, res) => {
+  try {
+    // Thay req.user.id bằng req.user.sub (nếu sub là ID trong JWT payload)
+    const user = await User.findById(req.user.sub).select('-password -otpCode -otpExpires');
+    if (!user) {
+      return res.status(404).json({ message: 'Người dùng không tìm thấy' });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error('Lỗi khi lấy thông tin profile người dùng:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
+// Cập nhật thông tin profile của người dùng đang đăng nhập
+exports.updateUserProfile = async (req, res) => {
+  try {
+    // req.user.id được thêm vào bởi auth.middleware (verifyToken)
+    const userId = req.user.sub;
+    const { name, avatarUrl } = req.body; //
+
+    // Không cho phép người dùng tự cập nhật email, role, password, verified, isActive
+    // Các trường này chỉ nên được admin quản lý hoặc thông qua các quy trình riêng biệt (ví dụ: đổi mật khẩu)
+    const updates = {};
+    if (name) updates.name = name;
+    if (avatarUrl) updates.avatarUrl = avatarUrl;
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: 'Không có thông tin nào để cập nhật.' });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      updates,
+      { new: true, runValidators: true } // Trả về đối tượng sau khi cập nhật, chạy các validator
+    ).select('-password -otpCode -otpExpires'); //
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'Không tìm thấy người dùng để cập nhật' });
+    }
+
+    res.json({ message: 'Cập nhật thông tin thành công', user: updatedUser });
+  } catch (error) {
+    console.error('Lỗi khi cập nhật profile người dùng:', error);
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+};

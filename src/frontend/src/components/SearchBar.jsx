@@ -102,6 +102,7 @@ const SearchBar = ({ onSearch }) => {
           </div>
 
           {/* Lọc theo loại văn bản */}
+          {/*
           <div>
             <label htmlFor="documentType" className="block text-gray-600 text-sm font-medium mb-1">
               Loại văn bản:
@@ -123,6 +124,7 @@ const SearchBar = ({ onSearch }) => {
               <option value="Giấy mời">Giấy mời</option>
             </select>
           </div>
+          */}
         </div>
       )}
     </div>

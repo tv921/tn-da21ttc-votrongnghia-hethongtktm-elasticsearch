@@ -10,6 +10,9 @@ from elasticsearch import Elasticsearch
 from sentence_transformers import SentenceTransformer
 from pdf2image import convert_from_path
 import pytesseract
+import dateparser
+import cv2
+import numpy as np
 
 # Cấu hình Tesseract & Poppler
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
@@ -32,81 +35,85 @@ if ELASTIC_USER and ELASTIC_PASS:
 else:
     es = Elasticsearch(ELASTIC_URL)
 
-# Mô hình SentenceTransformer để tạo vector
+# Mô hình SentenceTransformer
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2', device=device)
 
 # -------------------------------------------
-# Trích xuất văn bản bằng OCR (Tesseract)
+# OCR kết hợp xử lý ảnh
 # -------------------------------------------
+def preprocess_image(img):
+    img_np = np.array(img)
+    if len(img_np.shape) == 3 and img_np.shape[2] == 3:  # Nếu ảnh RGB (3 kênh)
+        gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
+    else:
+        gray = img_np  # Đã grayscale rồi
+    _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
+    return thresh
+
+
 def extract_text_from_pdf_ocr(pdf_path):
     text = ""
     try:
         images = convert_from_path(
             pdf_path,
-            dpi=200,
+            dpi=300,
             poppler_path=POPPLER_PATH,
             thread_count=4,
             grayscale=True
         )
         for img in images:
+            proc_img = preprocess_image(img)
             text += pytesseract.image_to_string(
-                img,
+                proc_img,
                 lang='vie',
-                config='--oem 1'
+                config='--oem 1 --psm 6'
             ) + "\n"
     except Exception as e:
         print(f"[OCR ERROR] {e}")
     return text.strip()
 
-# Sửa lỗi nhận dạng ký tự thường gặp từ OCR
 def clean_ocr_text(text):
     corrections = {'l': '1', 'I': '1', 'O': '0', 'o': '0', 'Z': '2'}
     return ''.join(corrections.get(c, c) for c in text)
 
-# Trích xuất ngày ban hành từ văn bản
+# -------------------------------------------
+# Trích xuất ngày ban hành
+# -------------------------------------------
 def extract_promulgation_date(text):
     text = clean_ocr_text(text)
     date_patterns = [
-        r"ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(\d{4})",
-        r"tháng\s+(\d{1,2})\s+năm\s+(\d{4})",
-        r"(\d{1,2})[/-](\d{1,2})[/-](\d{4})",
+        r"(ngày\s+\d{1,2}\s+tháng\s+\d{1,2}\s+năm\s+\d{4})",
+        r"(\d{1,2})[./-](\d{1,2})[./-](\d{4})",
         r"(\d{4}-\d{2}-\d{2})T"
     ]
     for pattern in date_patterns:
-        match = re.search(pattern, text, re.IGNORECASE)
-        if match:
-            try:
-                groups = list(map(int, match.groups()))
-                if len(groups) == 3:
-                    return datetime(groups[2], groups[1], groups[0]).strftime("%Y-%m-%d")
-                elif len(groups) == 2:
-                    return datetime(groups[1], groups[0], 1).strftime("%Y-%m-%d")
-                elif len(groups) == 1:
-                    return match.group(1)
-            except:
-                continue
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        for match in matches:
+            date_str = match if isinstance(match, str) else ' '.join(match)
+            parsed = dateparser.parse(date_str, languages=['vi'])
+            if parsed:
+                return parsed.strftime("%Y-%m-%d")
     return None
 
-# Trích xuất loại văn bản (Công văn, Quyết định, ...)
+# -------------------------------------------
+# Trích xuất loại văn bản
+# -------------------------------------------
 def extract_loai_van_ban(text):
-    loai_patterns = [
-        r"(Công văn)\s+số",
-        r"(Thông tư)\s+số",
-        r"(Quyết định)\s+số",
-        r"(Nghị định)\s+số",
-        r"(Chỉ thị)\s+số",
-        r"(Báo cáo)\s+số",
-        r"(Tờ trình)\s+số",
-        r"(Giấy mời)\s+số"
-    ]
-    for pattern in loai_patterns:
-        match = re.search(pattern, text, re.IGNORECASE)
-        if match:
-            return match.group(1)
+    types = ["Công văn", "Thông tư", "Quyết định", "Nghị định", "Chỉ thị", "Báo cáo", "Tờ trình", "Giấy mời"]
+    lines = text.split("\n")
+    
+    for line in lines[:15]:  # Kiểm tra khoảng 15 dòng đầu
+        clean_line = line.strip().lower()
+        for t in types:
+            if t.lower() in clean_line:
+                return t
     return "Không rõ"
 
+
+# -------------------------------------------
 # Tạo index trên Elasticsearch nếu chưa có
+# -------------------------------------------
 def create_index():
     if es.indices.exists(index=INDEX_NAME):
         return
@@ -129,7 +136,9 @@ def create_index():
     }
     es.indices.create(index=INDEX_NAME, body=mapping)
 
+# -------------------------------------------
 # Xử lý một file PDF: OCR -> Vector hóa -> Gửi vào Elasticsearch
+# -------------------------------------------
 def process_pdf_for_indexing(pdf_path):
     create_index()
     doc_id = os.path.basename(pdf_path)
@@ -147,7 +156,16 @@ def process_pdf_for_indexing(pdf_path):
 
     loai_van_ban = extract_loai_van_ban(text)
     ngay_ban_hanh = extract_promulgation_date(text)
-    vector = model.encode(text, convert_to_numpy=True, normalize_embeddings=True).tolist()
+
+    if ngay_ban_hanh:
+        try:
+            datetime.strptime(ngay_ban_hanh, "%Y-%m-%d")
+        except ValueError:
+            ngay_ban_hanh = None
+
+    # Vector hóa (có thể rút gọn chỉ lấy đoạn đầu nếu tài liệu quá dài)
+    content_for_vector = text[:3000]  # 3000 ký tự đầu tiên
+    vector = model.encode(content_for_vector, convert_to_numpy=True, normalize_embeddings=True).tolist()
 
     doc = {
         "_index": INDEX_NAME,

@@ -1,3 +1,4 @@
+// auth.controller.js
 const User = require('../models/user.model');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -30,7 +31,6 @@ async function sendOTPEmail(to, otp) {
 
 // --- Đăng ký tài khoản ---
 exports.register = async (req, res) => {
-  // Nhận thêm trường 'name' từ request body
   const { name, email, password, role } = req.body;
 
   try {
@@ -40,16 +40,15 @@ exports.register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = new User({
-      name, // Thêm 'name' vào đối tượng user mới
+      name,
       email,
       password: hashedPassword,
       role,
     });
 
-    // Gửi mã OTP
     const otp = generateOTP();
     user.otpCode = otp;
-    user.otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 phút
+    user.otpExpires = new Date(Date.now() + 5 * 60 * 1000);
     await user.save();
     await sendOTPEmail(user.email, otp);
 
@@ -82,9 +81,11 @@ exports.login = async (req, res) => {
     res.json({
       accessToken: token,
       user: {
-        name: user.name,   
+        id: user._id, 
+        name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        avatarUrl: user.avatarUrl || null, // Trả về avatarUrl nếu có
       }
     });
   } catch (error) {
@@ -131,7 +132,6 @@ exports.sendResetPasswordEmail = async (req, res) => {
     user.otpExpires = new Date(Date.now() + 5 * 60 * 1000);
     await user.save();
 
-    // Gửi email
     await sendOTPEmail(email, resetCode);
 
     res.json({ message: 'Đã gửi mã đặt lại mật khẩu đến email.' });

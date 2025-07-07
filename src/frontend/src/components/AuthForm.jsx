@@ -56,6 +56,7 @@ const AuthForm = ({ isLogin }) => {
         localStorage.setItem('token', res.data.accessToken);
         localStorage.setItem('role', res.data.user.role);
         localStorage.setItem('name', res.data.user.name);
+        localStorage.setItem('userId', res.data.user.id);
         navigate(res.data.user.role === 'admin' ? '/search' : '/upload');
       } else {
         toast.success('Đăng ký thành công! Vui lòng kiểm tra email và nhập mã OTP để xác minh.');

@@ -44,7 +44,7 @@ const Navbar = () => {
                   <Link
                     to="/upload"
                     className="block px-4 py-2 hover:bg-blue-100 flex items-center gap-2"
-                    onClick={() => setIsAdminMenuOpen(false)} // Đóng menu sau khi click
+                    onClick={() => setIsAdminMenuOpen(false)}
                   >
                     <FaUpload /> Thêm tài liệu
                   </Link>
@@ -77,9 +77,10 @@ const Navbar = () => {
           {/* Hiển thị khi đã đăng nhập */}
           {token ? (
             <div className="flex items-center gap-4">
-              <span className="flex items-center gap-2 font-medium">
+              {/* Thêm Link để chuyển hướng đến trang chỉnh sửa thông tin cá nhân */}
+              <Link to="/profile" className="flex items-center gap-2 font-medium hover:text-blue-200 cursor-pointer">
                 <FaUser /> {name || 'Người dùng'}
-              </span>
+              </Link>
               <button onClick={handleLogout} className="hover:text-red-200 flex items-center gap-1">
                 <FaSignOutAlt /> Đăng xuất
               </button>

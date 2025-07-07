@@ -62,7 +62,7 @@ async function deleteDocument(req, res) {
   try {
     // Xoá khỏi Elasticsearch
     await client.delete({
-      index: 'pdf_documents1',
+      index: 'pdf_documents2',
       id,
     });
 
