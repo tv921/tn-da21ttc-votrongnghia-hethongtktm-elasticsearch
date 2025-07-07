@@ -16,7 +16,7 @@ Hệ thống hỗ trợ tìm kiếm tài liệu PDF nhanh chóng và chính xác
   - Xử lý dữ liệu: Python + SentenceTransformers
   - Lưu trữ & tìm kiếm: Elasticsearch
 - **Cải thiện trải nghiệm người dùng**: Giao diện trực quan, kết quả phản hồi nhanh, hỗ trợ xem và tải tài liệu PDF.
-- **Ứng dụng thực tế**: Có thể triển khai cho thư viện số, hệ thống văn thư nội bộ, doanh nghiệp, trường học.
+
 
 ---
 
