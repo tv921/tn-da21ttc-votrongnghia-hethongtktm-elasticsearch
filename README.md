@@ -1,11 +1,7 @@
 
-# Hệ thống Tìm kiếm Tài liệu Thông minh với Elasticsearch
+# Tên đề tài: Tìm hiểu công nghệ Elasticsearch và xây dựng hệ thống tìm kiếm tài liệu thông minh
 
 ## 📌 Giới thiệu
-
-Đây là đồ án tốt nghiệp ngành Công nghệ Thông tin tại Trường Đại học Trà Vinh, với đề tài:
-
-**"Tìm hiểu công nghệ Elasticsearch và xây dựng hệ thống tìm kiếm tài liệu thông minh"**
 
 Hệ thống hỗ trợ tìm kiếm tài liệu PDF nhanh chóng và chính xác, bao gồm cả tìm kiếm từ khóa và tìm kiếm ngữ nghĩa, giúp người dùng dễ dàng truy xuất thông tin học thuật hoặc hành chính.
 
