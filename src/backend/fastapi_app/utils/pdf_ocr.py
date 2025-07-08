@@ -1,5 +1,4 @@
 
-
 import os
 import re
 import time
@@ -24,7 +23,7 @@ load_dotenv()
 ELASTIC_URL = os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")
 ELASTIC_USER = os.getenv("ELASTICSEARCH_USERNAME")
 ELASTIC_PASS = os.getenv("ELASTICSEARCH_PASSWORD")
-INDEX_NAME = "pdf_documents2"
+INDEX_NAME = "pdf_documents3"
 
 # Elasticsearch client
 if ELASTIC_USER and ELASTIC_PASS:
@@ -134,7 +133,7 @@ def create_index():
     mapping = {
         "mappings": {
             "properties": {
-                "title": {"type": "keyword"},
+                "title": {"type": "text"},
                 "file_path": {"type": "keyword"},
                 "content": {"type": "text"},
                 "ngay_ban_hanh": {"type": "date"},
